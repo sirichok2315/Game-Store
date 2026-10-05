@@ -1,26 +1,795 @@
 @import "tailwindcss";
 
+/* =========================================================
+   PASTEL THEME
+   ========================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --pastel-yellow: #FFFAD3;
+  --pastel-orange: #FFDBB0;
+  --pastel-peach: #FFCCB8;
+  --pastel-pink: #FFB1B1;
+
+  --pastel-yellow-dark: #E9DFA0;
+  --pastel-orange-dark: #E8B979;
+  --pastel-peach-dark: #EAA48E;
+  --pastel-pink-dark: #E98D8D;
+
+  --text-main: #5B4545;
+  --text-secondary: #806666;
+  --text-light: #A38383;
+
+  --white: #FFFFFF;
+  --background: #FFFDF8;
+
+  --success: #6E9B68;
+  --danger: #D96B6B;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* =========================================================
+   RESET
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+
+  background:
+    linear-gradient(180deg,
+      #FFFDF8 0%,
+      #FFF9EF 100%);
+
+  color: var(--text-main);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* =========================================================
+   SELECTION
+   ========================================================= */
+
+::selection {
+  background: var(--pastel-pink);
+  color: #4D3636;
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFF9EF;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pastel-peach);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pastel-pink);
+}
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* =========================================================
+   INPUT / SELECT / TEXTAREA
+   ========================================================= */
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #B69B9B;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* =========================================================
+   BUTTON
+   ========================================================= */
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   MAIN PAGE
+   ========================================================= */
+
+main {
+  color: var(--text-main);
+}
+
+/* =========================================================
+   PASTEL BACKGROUND
+   ========================================================= */
+
+.pastel-background {
+  background:
+    radial-gradient(circle at 10% 10%,
+      rgba(255, 250, 211, 0.9),
+      transparent 30%),
+    radial-gradient(circle at 90% 20%,
+      rgba(255, 219, 176, 0.8),
+      transparent 30%),
+    radial-gradient(circle at 20% 90%,
+      rgba(255, 204, 184, 0.7),
+      transparent 30%),
+    #FFFDF8;
+}
+
+/* =========================================================
+   PASTEL HERO / BANNER
+   ========================================================= */
+
+.pastel-banner {
+  background:
+    linear-gradient(135deg,
+      var(--pastel-yellow) 0%,
+      var(--pastel-orange) 35%,
+      var(--pastel-peach) 70%,
+      var(--pastel-pink) 100%);
+
+  color: var(--text-main);
+
+  border: 1px solid rgba(255, 177, 177, 0.45);
+
+  box-shadow:
+    0 10px 30px rgba(180, 130, 120, 0.12);
+}
+
+/* =========================================================
+   PRODUCT CARD
+   ========================================================= */
+
+.product-card {
+  background: #FFFFFF;
+
+  border: 2px solid var(--pastel-peach);
+
+  border-radius: 18px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 5px 15px rgba(180, 130, 120, 0.10);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+
+  border-color: var(--pastel-pink);
+
+  box-shadow:
+    0 12px 25px rgba(180, 130, 120, 0.18);
+}
+
+/* =========================================================
+   PRODUCT IMAGE
+   ========================================================= */
+
+.product-image {
+  background:
+    linear-gradient(135deg,
+      var(--pastel-yellow),
+      var(--pastel-orange));
+
+  overflow: hidden;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  transition:
+    transform 0.35s ease;
+}
+
+.product-card:hover .product-image img {
+  transform: scale(1.05);
+}
+
+/* =========================================================
+   GAME BADGE
+   ========================================================= */
+
+.game-badge {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px 11px;
+
+  border-radius: 999px;
+
+  background: var(--pastel-pink);
+
+  color: #5B3838;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  box-shadow:
+    0 3px 8px rgba(180, 100, 100, 0.12);
+}
+
+/* =========================================================
+   PRODUCT TITLE
+   ========================================================= */
+
+.product-title {
+  color: #5B4545;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  transition: color 0.2s ease;
+}
+
+.product-title:hover {
+  color: #C86F6F;
+}
+
+/* =========================================================
+   PRODUCT DESCRIPTION
+   ========================================================= */
+
+.product-description {
+  color: var(--text-secondary);
+
+  font-size: 14px;
+
+  line-height: 1.6;
+}
+
+/* =========================================================
+   SELLER
+   ========================================================= */
+
+.seller-info {
+  color: var(--text-light);
+
+  font-size: 12px;
+}
+
+.seller-name {
+  color: #6A4A4A;
+
+  font-weight: 700;
+}
+
+/* =========================================================
+   PRICE
+   ========================================================= */
+
+.product-price {
+  color: var(--success);
+
+  font-size: 21px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   PRIMARY BUTTON
+   ========================================================= */
+
+.btn-primary {
+  background:
+    linear-gradient(135deg,
+      #EAA48E,
+      #E98D8D);
+
+  color: #FFFFFF;
+
+  border: none;
+
+  border-radius: 10px;
+
+  padding: 9px 16px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  box-shadow:
+    0 4px 10px rgba(210, 120, 120, 0.20);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.03);
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 6px 14px rgba(210, 120, 120, 0.28);
+}
+
+/* =========================================================
+   CART BUTTON
+   ========================================================= */
+
+.btn-cart {
+  background: var(--pastel-peach);
+
+  color: #624545;
+
+  border: 1px solid #E9AA92;
+
+  border-radius: 10px;
+
+  padding: 9px 16px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.btn-cart:hover {
+  background: var(--pastel-orange);
+
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   REMOVE CART BUTTON
+   ========================================================= */
+
+.btn-remove-cart {
+  background: var(--pastel-pink);
+
+  color: #663C3C;
+
+  border: 1px solid #E99999;
+
+  border-radius: 10px;
+
+  padding: 9px 16px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.btn-remove-cart:hover {
+  background: #FFA0A0;
+
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   EDIT BUTTON
+   ========================================================= */
+
+.btn-edit {
+  background: var(--pastel-yellow);
+
+  color: #685D35;
+
+  border: 1px solid var(--pastel-yellow-dark);
+
+  border-radius: 9px;
+
+  padding: 8px 12px;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.btn-edit:hover {
+  background: #FFF3B0;
+
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   DELETE BUTTON
+   ========================================================= */
+
+.btn-delete {
+  background: var(--pastel-pink);
+
+  color: #703A3A;
+
+  border: 1px solid var(--pastel-pink-dark);
+
+  border-radius: 9px;
+
+  padding: 8px 12px;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.btn-delete:hover {
+  background: #FFA0A0;
+
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   SEARCH BOX
+   ========================================================= */
+
+.pastel-search {
+  background: #FFFFFF;
+
+  color: var(--text-main);
+
+  border: 2px solid var(--pastel-orange);
+
+  border-radius: 11px;
+
+  padding: 12px 15px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.pastel-search:focus {
+  border-color: var(--pastel-pink);
+
+  box-shadow:
+    0 0 0 4px rgba(255, 177, 177, 0.20);
+}
+
+/* =========================================================
+   SELECT
+   ========================================================= */
+
+.pastel-select {
+  background: #FFFFFF;
+
+  color: var(--text-main);
+
+  border: 2px solid var(--pastel-orange);
+
+  border-radius: 11px;
+
+  padding: 12px 15px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.pastel-select:focus {
+  border-color: var(--pastel-pink);
+
+  box-shadow:
+    0 0 0 4px rgba(255, 177, 177, 0.20);
+}
+
+/* =========================================================
+   SECTION TITLE
+   ========================================================= */
+
+.section-title {
+  color: #5B4545;
+
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   SECTION SUBTITLE
+   ========================================================= */
+
+.section-count {
+  color: #9B8080;
+
+  font-size: 14px;
+}
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.empty-state {
+  background: #FFFFFF;
+
+  border: 2px solid var(--pastel-yellow);
+
+  border-radius: 18px;
+
+  padding: 48px 20px;
+
+  text-align: center;
+
+  box-shadow:
+    0 6px 18px rgba(180, 130, 120, 0.08);
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+}
+
+/* =========================================================
+   NAVBAR
+   ========================================================= */
+
+.pastel-navbar {
+  background:
+    linear-gradient(90deg,
+      #FFFAD3 0%,
+      #FFDBB0 45%,
+      #FFCCB8 75%,
+      #FFB1B1 100%);
+
+  border-bottom: 1px solid rgba(210, 150, 140, 0.25);
+
+  box-shadow:
+    0 4px 15px rgba(180, 130, 120, 0.10);
+}
+
+/* =========================================================
+   NAV BUTTON
+   ========================================================= */
+
+.nav-button {
+  color: #664B4B;
+
+  border-radius: 9px;
+
+  padding: 8px 12px;
+
+  font-weight: 600;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.55);
+
+  color: #493535;
+}
+
+/* =========================================================
+   BALANCE
+   ========================================================= */
+
+.balance-box {
+  background: rgba(255, 255, 255, 0.65);
+
+  border: 1px solid rgba(255, 255, 255, 0.8);
+
+  color: #644545;
+
+  border-radius: 999px;
+
+  padding: 7px 13px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  backdrop-filter: blur(5px);
+}
+
+/* =========================================================
+   CARD DIVIDER
+   ========================================================= */
+
+.pastel-divider {
+  border-color: rgba(230, 170, 160, 0.35);
+}
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.loading-text {
+  color: #9B8080;
+
+  font-size: 16px;
+}
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+
+.pastel-modal {
+  background: #FFFFFF;
+
+  border: 2px solid var(--pastel-peach);
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 20px 50px rgba(120, 80, 70, 0.18);
+}
+
+/* =========================================================
+   FORM CARD
+   ========================================================= */
+
+.pastel-form {
+  background: #FFFFFF;
+
+  border: 2px solid var(--pastel-orange);
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 8px 25px rgba(180, 130, 120, 0.10);
+}
+
+/* =========================================================
+   FORM LABEL
+   ========================================================= */
+
+.pastel-label {
+  color: #634B4B;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   FORM INPUT
+   ========================================================= */
+
+.pastel-input {
+  width: 100%;
+
+  background: #FFFDF8;
+
+  color: var(--text-main);
+
+  border: 2px solid var(--pastel-orange);
+
+  border-radius: 10px;
+
+  padding: 11px 13px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.pastel-input:focus {
+  border-color: var(--pastel-pink);
+
+  box-shadow:
+    0 0 0 4px rgba(255, 177, 177, 0.18);
+}
+
+/* =========================================================
+   PASTEL COLOR STRIP
+   ========================================================= */
+
+.pastel-strip {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  overflow: hidden;
+
+  border-radius: 16px;
+}
+
+.pastel-strip>div:nth-child(1) {
+  background: #FFFAD3;
+}
+
+.pastel-strip>div:nth-child(2) {
+  background: #FFDBB0;
+}
+
+.pastel-strip>div:nth-child(3) {
+  background: #FFCCB8;
+}
+
+.pastel-strip>div:nth-child(4) {
+  background: #FFB1B1;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .section-title {
+    font-size: 19px;
+  }
+
+  .product-title {
+    font-size: 17px;
+  }
+
+  .product-price {
+    font-size: 19px;
+  }
+
+  .pastel-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-card {
+    border-radius: 15px;
+  }
+
+  .product-price {
+    font-size: 18px;
+  }
+
+  .btn-cart,
+  .btn-primary,
+  .btn-remove-cart {
+    padding: 8px 11px;
+    font-size: 12px;
+  }
 }
