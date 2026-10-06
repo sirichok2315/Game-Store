@@ -27,6 +27,10 @@ function SellFormContent() {
 
     const [isEditing, setIsEditing] = useState(false);
     const [loadingItem, setLoadingItem] = useState(false);
+    const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+
+    // ใส่ ImgBB API Key ของคุณที่นี่ (สามารถสมัครฟรีได้ที่ https://api.imgbb.com/)
+    const IMGBB_API_KEY = '9943775e507cd3e96ff77a1f5b5b67bb';
 
     useEffect(() => {
         if (session?.user?.name && !editId) {
@@ -95,48 +99,7 @@ function SellFormContent() {
         fetchItem();
     }, [editId, session, router]);
 
-    // ฟังก์ชันบีบอัดและย่อขนาดภาพด้วย Canvas เพื่อป้องกัน Payload Too Large
-    const compressImage = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target?.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800;  // จำกัดความกว้างสูงสุด
-                    const MAX_HEIGHT = 800; // จำกัดความสูงสูงสุด
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-                    } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(img, 0, 0, width, height);
-
-                    // บีบอัดคุณภาพเหลือ 70% (0.7) เพื่อให้ไฟล์มีขนาดเล็กลงมาก
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                    resolve(dataUrl);
-                };
-                img.onerror = (error) => reject(error);
-            };
-            reader.onerror = (error) => reject(error);
-        });
-    };
-
+    // ฟังก์ชันอัปโหลดรูปภาพขึ้น ImgBB API อัตโนมัติเมื่อลูกค้าเลือกไฟล์
     const handleImageChange = async (
         index: number,
         e: React.ChangeEvent<HTMLInputElement>
@@ -144,15 +107,36 @@ function SellFormContent() {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        if (IMGBB_API_KEY === 'ใส่_API_KEY_ของคุณที่นี่') {
+            alert('⚠️ กรุณาใส่ ImgBB API Key ในโค้ดก่อนใช้งานอัปโหลดรูปภาพ');
+            return;
+        }
+
         try {
-            // เรียกใช้ฟังก์ชันบีบอัดรูปภาพก่อนนำไปแสดงผลและบันทึก
-            const compressedDataUrl = await compressImage(file);
-            const newImages = [...images];
-            newImages[index] = compressedDataUrl;
-            setImages(newImages);
+            setUploadingIndex(index);
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const imageUrl = result.data.url; // ได้ลิงก์ URL ของรูปภาพตรงๆ
+                const newImages = [...images];
+                newImages[index] = imageUrl;
+                setImages(newImages);
+            } else {
+                alert('❌ อัปโหลดรูปภาพไม่สำเร็จ: ' + (result.error?.message || 'Unknown error'));
+            }
         } catch (error) {
-            console.error('Image compression error:', error);
-            alert('❌ ไม่สามารถประมวลผลรูปภาพได้');
+            console.error('ImgBB upload error:', error);
+            alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเพื่ออัปโหลดรูปภาพ');
+        } finally {
+            setUploadingIndex(null);
         }
     };
 
@@ -368,7 +352,7 @@ function SellFormContent() {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            อัปโหลดรูปภาพสินค้า (ระบบย่อขนาดให้อัตโนมัติ ป้องกันรูปใหญ่เกินไป)
+                            อัปโหลดรูปภาพสินค้า (ระบบอัปโหลดขึ้นคลาวด์และแปลงเป็น URL ให้อัตโนมัติ)
                         </label>
                         {images.map((img, index) => (
                             <div key={index} className="flex items-center gap-2 mb-2">
@@ -389,6 +373,11 @@ function SellFormContent() {
                                 )}
                             </div>
                         ))}
+                        {uploadingIndex !== null && (
+                            <p className="text-xs text-blue-600 font-medium animate-pulse mt-1">
+                                ⏳ กำลังอัปโหลดรูปภาพขึ้นคลาวด์ กรุณารอสักครู่...
+                            </p>
+                        )}
                         <button
                             type="button"
                             onClick={handleAddImageField}
@@ -400,7 +389,8 @@ function SellFormContent() {
                         <div className="flex flex-wrap gap-2 mt-3">
                             {images.map(
                                 (img, i) =>
-                                    img && (
+                                    img &&
+                                    img.startsWith('http') && (
                                         <div key={i} className="relative">
                                             <img
                                                 src={img}
