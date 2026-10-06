@@ -107,7 +107,7 @@ function SellFormContent() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (IMGBB_API_KEY === 'ใส่_API_KEY_ของคุณที่นี่') {
+        if (IMGBB_API_KEY === '9943775e507cd3e96ff77a1f5b5b67bb') {
             alert('⚠️ กรุณาใส่ ImgBB API Key ในโค้ดก่อนใช้งานอัปโหลดรูปภาพ');
             return;
         }
