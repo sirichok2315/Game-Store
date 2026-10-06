@@ -29,8 +29,8 @@ function SellFormContent() {
     const [loadingItem, setLoadingItem] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
-    // ใส่ ImgBB API Key ของคุณที่นี่ (สามารถสมัครฟรีได้ที่ https://api.imgbb.com/)
-    const IMGBB_API_KEY = '9943775e507cd3e96ff77a1f5b5b67bb';
+    // ดึงค่า ImgBB API Key จาก Environment Variable ของ Next.js
+    const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 
     useEffect(() => {
         if (session?.user?.name && !editId) {
@@ -107,8 +107,8 @@ function SellFormContent() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (IMGBB_API_KEY === '9943775e507cd3e96ff77a1f5b5b67bb') {
-            alert('⚠️ กรุณาใส่ ImgBB API Key ในโค้ดก่อนใช้งานอัปโหลดรูปภาพ');
+        if (!IMGBB_API_KEY) {
+            alert('⚠️ กรุณาใส่ ImgBB API Key ใน Vercel Environment Variables ก่อนใช้งานอัปโหลดรูปภาพ');
             return;
         }
 
