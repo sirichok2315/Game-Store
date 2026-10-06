@@ -2,9 +2,9 @@ import pool from "@/lib/db";
 
 export async function GET() {
     try {
-        // เลือกเฉพาะฟิลด์ที่ต้องใช้งานจริง หลีกเลี่ยงการใช้ SELECT * เพื่อป้องกัน Payload ใหญ่เกินไป
+        // ดึงเฉพาะฟิลด์สั้นๆ ที่จำเป็นต้องแสดงผลจริงๆ ตัด TEXT/JSON ก้อนโตออกเพื่อป้องกัน Payload เกินลิมิต
         const [rows] = await pool.query(`
-            SELECT id, gameName, title, price, description, imageUrl, imageUrls, sellerName, createdAt, gameUsername, gamePassword 
+            SELECT id, gameName, title, price, imageUrl, sellerName, createdAt, gameUsername, gamePassword 
             FROM game_items 
             ORDER BY createdAt DESC
         `);
