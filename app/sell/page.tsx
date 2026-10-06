@@ -95,20 +95,65 @@ function SellFormContent() {
         fetchItem();
     }, [editId, session, router]);
 
-    const handleImageChange = (
+    // ฟังก์ชันบีบอัดและย่อขนาดภาพด้วย Canvas เพื่อป้องกัน Payload Too Large
+    const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;  // จำกัดความกว้างสูงสุด
+                    const MAX_HEIGHT = 800; // จำกัดความสูงสูงสุด
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+
+                    // บีบอัดคุณภาพเหลือ 70% (0.7) เพื่อให้ไฟล์มีขนาดเล็กลงมาก
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    resolve(dataUrl);
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
+    const handleImageChange = async (
         index: number,
         e: React.ChangeEvent<HTMLInputElement>
     ) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
+        try {
+            // เรียกใช้ฟังก์ชันบีบอัดรูปภาพก่อนนำไปแสดงผลและบันทึก
+            const compressedDataUrl = await compressImage(file);
             const newImages = [...images];
-            newImages[index] = reader.result as string;
+            newImages[index] = compressedDataUrl;
             setImages(newImages);
-        };
-        reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('Image compression error:', error);
+            alert('❌ ไม่สามารถประมวลผลรูปภาพได้');
+        }
     };
 
     const handleAddImageField = () => {
@@ -323,7 +368,7 @@ function SellFormContent() {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            อัปโหลดรูปภาพสินค้า (เพิ่มได้หลายรูป)
+                            อัปโหลดรูปภาพสินค้า (ระบบย่อขนาดให้อัตโนมัติ ป้องกันรูปใหญ่เกินไป)
                         </label>
                         {images.map((img, index) => (
                             <div key={index} className="flex items-center gap-2 mb-2">
@@ -394,7 +439,6 @@ function SellFormContent() {
     );
 }
 
-// คอมโพเนนต์หลักที่ใช้ครอบ Suspense ไว้ภายในไฟล์เดียว
 export default function SellPage() {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center">กำลังโหลดหน้าลงขาย...</div>}>
