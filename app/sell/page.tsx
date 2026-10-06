@@ -99,7 +99,7 @@ function SellFormContent() {
         fetchItem();
     }, [editId, session, router]);
 
-    // ฟังก์ชันอัปโหลดรูปภาพขึ้น ImgBB API อัตโนมัติเมื่อลูกค้าเลือกไฟล์
+    // แก้ไขฟังก์ชันอัปโหลดรูปภาพในหน้า page.tsx
     const handleImageChange = async (
         index: number,
         e: React.ChangeEvent<HTMLInputElement>
@@ -107,17 +107,13 @@ function SellFormContent() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (!IMGBB_API_KEY) {
-            alert('⚠️ กรุณาใส่ ImgBB API Key ใน Vercel Environment Variables ก่อนใช้งานอัปโหลดรูปภาพ');
-            return;
-        }
-
         try {
             setUploadingIndex(index);
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            // ส่งข้อมูลไปที่ API หลังบ้านของเราเอง
+            const response = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData,
             });
@@ -125,7 +121,7 @@ function SellFormContent() {
             const result = await response.json();
 
             if (result.success) {
-                const imageUrl = result.data.url; // ได้ลิงก์ URL ของรูปภาพตรงๆ
+                const imageUrl = result.data.url;
                 const newImages = [...images];
                 newImages[index] = imageUrl;
                 setImages(newImages);
