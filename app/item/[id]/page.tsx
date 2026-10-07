@@ -14,7 +14,10 @@ export default function ItemDetailPage() {
   const [selectedImage, setSelectedImage] = useState('');
   const [loading, setLoading] = useState(true);
   const [isInCart, setIsInCart] = useState(false);
+
+  // ==========================================
   // โหลดข้อมูลสินค้าจาก MySQL
+  // ==========================================
   useEffect(() => {
     if (!id) return;
 
@@ -43,7 +46,9 @@ export default function ItemDetailPage() {
 
           if (Array.isArray(target.imageUrls)) {
             images = target.imageUrls;
-          } else if (typeof target.imageUrls === 'string') {
+          } else if (
+            typeof target.imageUrls === 'string'
+          ) {
             try {
               images = JSON.parse(target.imageUrls);
             } catch {
@@ -75,58 +80,149 @@ export default function ItemDetailPage() {
     fetchItem();
   }, [id]);
 
-  // เพิ่มสินค้าลงตะกร้า
-  // เพิ่ม / ยกเลิกสินค้าในตะกร้า
-  const handleCartToggle = (itemToToggle: GameItem) => {
-    const cart: GameItem[] = JSON.parse(
-      localStorage.getItem('cartItems') || '[]'
-    );
+  // ==========================================
+  // ตรวจสอบว่าสินค้านี้อยู่ในตะกร้าหรือไม่
+  // ==========================================
+  useEffect(() => {
+    if (!item) return;
 
-    const isAlreadyInCart = cart.some(
-      (cartItem) =>
-        String(cartItem.id) === String(itemToToggle.id)
-    );
+    const storedCart =
+      localStorage.getItem('cartItems');
 
-    if (isAlreadyInCart) {
-      // ลบออกจากตะกร้า
-      const updatedCart = cart.filter(
-        (cartItem) =>
-          String(cartItem.id) !== String(itemToToggle.id)
+    if (!storedCart) {
+      setIsInCart(false);
+      return;
+    }
+
+    try {
+      const parsedCart = JSON.parse(storedCart);
+
+      // รองรับทั้งข้อมูลเก่าแบบ GameItem
+      // และข้อมูลใหม่แบบ ID
+      const cartIds: string[] = Array.isArray(parsedCart)
+        ? parsedCart.map((cartItem: any) => {
+            if (
+              typeof cartItem === 'object' &&
+              cartItem !== null
+            ) {
+              return String(cartItem.id);
+            }
+
+            return String(cartItem);
+          })
+        : [];
+
+      const exists = cartIds.some(
+        (cartId) =>
+          String(cartId) === String(item.id)
       );
+
+      setIsInCart(exists);
+
+      // แปลงตะกร้าเก่าให้เหลือเฉพาะ ID
+      // และป้องกันสินค้าซ้ำ
+      const uniqueCartIds = [
+        ...new Set(cartIds)
+      ];
 
       localStorage.setItem(
         'cartItems',
-        JSON.stringify(updatedCart)
+        JSON.stringify(uniqueCartIds)
+      );
+
+    } catch {
+      setIsInCart(false);
+    }
+  }, [item]);
+
+  // ==========================================
+  // เพิ่ม / ยกเลิกสินค้าในตะกร้า
+  // ==========================================
+  const handleCartToggle = (
+    itemToToggle: GameItem
+  ) => {
+    const storedCart =
+      localStorage.getItem('cartItems');
+
+    let cartIds: string[] = [];
+
+    try {
+      const parsedCart = storedCart
+        ? JSON.parse(storedCart)
+        : [];
+
+      // รองรับข้อมูลเก่าที่เป็น GameItem
+      cartIds = Array.isArray(parsedCart)
+        ? parsedCart.map((cartItem: any) => {
+            if (
+              typeof cartItem === 'object' &&
+              cartItem !== null
+            ) {
+              return String(cartItem.id);
+            }
+
+            return String(cartItem);
+          })
+        : [];
+
+    } catch {
+      cartIds = [];
+    }
+
+    const itemId =
+      String(itemToToggle.id);
+
+    const isAlreadyInCart =
+      cartIds.some(
+        (cartId) =>
+          String(cartId) === itemId
+      );
+
+    let updatedCartIds: string[];
+
+    // ==========================================
+    // ถ้ามีอยู่แล้ว → ลบออก
+    // ==========================================
+    if (isAlreadyInCart) {
+      updatedCartIds = cartIds.filter(
+        (cartId) =>
+          String(cartId) !== itemId
       );
 
       setIsInCart(false);
 
-      window.dispatchEvent(
-        new Event('storage')
-      );
+    } else {
 
-      return;
+      // ==========================================
+      // ถ้ายังไม่มี → เพิ่มเข้า
+      // ==========================================
+      updatedCartIds = [
+        ...cartIds,
+        itemId
+      ];
+
+      setIsInCart(true);
     }
 
-    // เพิ่มเข้าตะกร้า
-    const updatedCart = [
-      ...cart,
-      itemToToggle,
+    // ป้องกันสินค้าซ้ำ
+    updatedCartIds = [
+      ...new Set(updatedCartIds)
     ];
 
     localStorage.setItem(
       'cartItems',
-      JSON.stringify(updatedCart)
+      JSON.stringify(updatedCartIds)
     );
 
-    setIsInCart(true);
-
+    // แจ้งหน้าอื่นให้รู้ว่าตะกร้าเปลี่ยน
     window.dispatchEvent(
       new Event('storage')
     );
   };
 
+  // ==========================================
   // กำลังโหลด
+  // ==========================================
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
@@ -139,7 +235,9 @@ export default function ItemDetailPage() {
     );
   }
 
+  // ==========================================
   // ไม่พบสินค้า
+  // ==========================================
   if (!item) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
@@ -159,11 +257,14 @@ export default function ItemDetailPage() {
     );
   }
 
+  // ==========================================
   // จัดการรูปภาพ
+  // ==========================================
   let images: string[] = [];
 
   if (Array.isArray(item.imageUrls)) {
     images = item.imageUrls;
+
   } else if (
     typeof item.imageUrls === 'string'
   ) {
@@ -174,10 +275,16 @@ export default function ItemDetailPage() {
     }
   }
 
-  if (images.length === 0 && item.imageUrl) {
+  if (
+    images.length === 0 &&
+    item.imageUrl
+  ) {
     images = [item.imageUrl];
   }
 
+  // ==========================================
+  // แสดงหน้า
+  // ==========================================
   return (
     <main className="min-h-screen bg-gray-50 py-10 px-4">
 
@@ -193,16 +300,19 @@ export default function ItemDetailPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-          {/* ============================= */}
-          {/* ฝั่งซ้าย : รูปภาพ */}
-          {/* ============================= */}
+          {/* ==========================================
+              ฝั่งซ้าย : รูปภาพ
+          ========================================== */}
 
           <div className="space-y-4">
 
             <div className="w-full h-72 md:h-80 bg-gray-100 rounded-xl overflow-hidden border shadow-inner">
 
               <img
-                src={selectedImage || item.imageUrl}
+                src={
+                  selectedImage ||
+                  item.imageUrl
+                }
                 alt={item.title}
                 className="w-full h-full object-cover"
               />
@@ -220,10 +330,11 @@ export default function ItemDetailPage() {
                       onClick={() =>
                         setSelectedImage(img)
                       }
-                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition shrink-0 ${selectedImage === img
-                        ? 'border-blue-600 shadow-md'
-                        : 'border-transparent opacity-70 hover:opacity-100'
-                        }`}
+                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition shrink-0 ${
+                        selectedImage === img
+                          ? 'border-blue-600 shadow-md'
+                          : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
                     >
 
                       <img
@@ -241,9 +352,9 @@ export default function ItemDetailPage() {
 
           </div>
 
-          {/* ============================= */}
-          {/* ฝั่งขวา : รายละเอียด */}
-          {/* ============================= */}
+          {/* ==========================================
+              ฝั่งขวา : รายละเอียด
+          ========================================== */}
 
           <div className="flex flex-col justify-between">
 
@@ -306,9 +417,9 @@ export default function ItemDetailPage() {
 
             </div>
 
-            {/* ============================= */}
-            {/* ปุ่มซื้อ */}
-            {/* ============================= */}
+            {/* ==========================================
+                ปุ่มซื้อ
+            ========================================== */}
 
             <div className="mt-8 pt-4 border-t">
 
@@ -335,11 +446,14 @@ export default function ItemDetailPage() {
               ) : (
 
                 <button
-                  onClick={() => handleCartToggle(item)}
-                  className={`w-full ${isInCart
+                  onClick={() =>
+                    handleCartToggle(item)
+                  }
+                  className={`w-full ${
+                    isInCart
                       ? 'bg-red-500 hover:bg-red-600'
                       : 'bg-blue-600 hover:bg-blue-700'
-                    } text-white font-semibold py-3 rounded-xl transition shadow`}
+                  } text-white font-semibold py-3 rounded-xl transition shadow`}
                 >
                   {isInCart
                     ? '❌ ยกเลิกใส่ตะกร้า'
