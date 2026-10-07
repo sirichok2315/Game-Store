@@ -18,8 +18,6 @@ function SellFormContent() {
 
     const [gameUsername, setGameUsername] = useState('');
     const [gamePassword, setGamePassword] = useState('');
-
-    const [images, setImages] = useState<string[]>(['']);
     const [sellerName, setSellerName] = useState('');
 
     const searchParams = useSearchParams();
@@ -27,10 +25,6 @@ function SellFormContent() {
 
     const [isEditing, setIsEditing] = useState(false);
     const [loadingItem, setLoadingItem] = useState(false);
-    const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
-
-    // ดึงค่า ImgBB API Key จาก Environment Variable ของ Next.js
-    const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 
     useEffect(() => {
         if (session?.user?.name && !editId) {
@@ -70,22 +64,6 @@ function SellFormContent() {
                 setGamePassword(target.gamePassword || '');
                 setSellerName(target.sellerName || '');
 
-                let oldImages: string[] = [];
-                if (Array.isArray(target.imageUrls)) {
-                    oldImages = target.imageUrls;
-                } else if (typeof target.imageUrls === 'string') {
-                    try {
-                        oldImages = JSON.parse(target.imageUrls);
-                    } catch {
-                        oldImages = [];
-                    }
-                }
-
-                if (oldImages.length === 0 && target.imageUrl) {
-                    oldImages = [target.imageUrl];
-                }
-
-                setImages(oldImages.length > 0 ? oldImages : ['']);
                 setIsEditing(true);
             } catch (error) {
                 console.error('Fetch edit item error:', error);
@@ -99,60 +77,12 @@ function SellFormContent() {
         fetchItem();
     }, [editId, session, router]);
 
-    // แก้ไขฟังก์ชันอัปโหลดรูปภาพในหน้า page.tsx
-    const handleImageChange = async (
-        index: number,
-        e: React.ChangeEvent<HTMLInputElement>
-    ) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        try {
-            setUploadingIndex(index);
-            const formData = new FormData();
-            formData.append('image', file);
-
-            // ส่งข้อมูลไปที่ API หลังบ้านของเราเอง
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                const imageUrl = result.data.url;
-                const newImages = [...images];
-                newImages[index] = imageUrl;
-                setImages(newImages);
-            } else {
-                alert('❌ อัปโหลดรูปภาพไม่สำเร็จ: ' + (result.error?.message || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('ImgBB upload error:', error);
-            alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเพื่ออัปโหลดรูปภาพ');
-        } finally {
-            setUploadingIndex(null);
-        }
-    };
-
-    const handleAddImageField = () => {
-        setImages([...images, '']);
-    };
-
-    const handleRemoveImageField = (index: number) => {
-        const newImages = images.filter((_, i) => i !== index);
-        setImages(newImages.length > 0 ? newImages : ['']);
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const validImages = images.filter((img) => img.trim() !== '');
+        // ใช้รูปภาพเริ่มต้นโดยอัตโนมัติ
         const defaultImage =
             'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500&auto=format&fit=crop&q=60';
-        const finalImages =
-            validImages.length > 0 ? validImages : [defaultImage];
 
         if (isEditing && editId) {
             const updatedItem: GameItem = {
@@ -163,8 +93,8 @@ function SellFormContent() {
                 description,
                 gameUsername,
                 gamePassword,
-                imageUrl: finalImages[0],
-                imageUrls: finalImages,
+                imageUrl: defaultImage,
+                imageUrls: [defaultImage],
                 sellerName: sellerName || session?.user?.name || 'Anonymous',
                 createdAt: '',
             };
@@ -199,8 +129,8 @@ function SellFormContent() {
             description,
             gameUsername,
             gamePassword,
-            imageUrl: finalImages[0],
-            imageUrls: finalImages,
+            imageUrl: defaultImage,
+            imageUrls: [defaultImage],
             sellerName: session?.user?.name || sellerName || 'Anonymous',
             createdAt: new Date().toLocaleDateString('th-TH', {
                 year: 'numeric',
@@ -343,59 +273,6 @@ function SellFormContent() {
                                 className="w-full border rounded-lg p-2.5 text-gray-800 bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                 required
                             />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            อัปโหลดรูปภาพสินค้า (ระบบอัปโหลดขึ้นคลาวด์และแปลงเป็น URL ให้อัตโนมัติ)
-                        </label>
-                        {images.map((img, index) => (
-                            <div key={index} className="flex items-center gap-2 mb-2">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => handleImageChange(index, e)}
-                                    className="w-full border rounded-lg p-2 text-gray-700 bg-white file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer text-xs"
-                                />
-                                {images.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveImageField(index)}
-                                        className="bg-red-50 text-red-600 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-red-100 transition"
-                                    >
-                                        ลบ
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                        {uploadingIndex !== null && (
-                            <p className="text-xs text-blue-600 font-medium animate-pulse mt-1">
-                                ⏳ กำลังอัปโหลดรูปภาพขึ้นคลาวด์ กรุณารอสักครู่...
-                            </p>
-                        )}
-                        <button
-                            type="button"
-                            onClick={handleAddImageField}
-                            className="mt-1 text-xs text-blue-600 font-semibold hover:underline"
-                        >
-                            + เพิ่มช่องอัปโหลดรูปภาพอีก
-                        </button>
-
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            {images.map(
-                                (img, i) =>
-                                    img &&
-                                    img.startsWith('http') && (
-                                        <div key={i} className="relative">
-                                            <img
-                                                src={img}
-                                                alt={`Preview ${i}`}
-                                                className="w-20 h-16 object-cover rounded-lg border shadow-sm"
-                                            />
-                                        </div>
-                                    )
-                            )}
                         </div>
                     </div>
 
