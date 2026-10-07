@@ -1,5 +1,7 @@
 import pool from "@/lib/db";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // ==========================================
 // ดึงข้อมูลสินค้าทั้งหมด
@@ -40,12 +42,28 @@ export async function GET() {
     }
 }
 
-
 // ==========================================
 // เพิ่มสินค้าใหม่
+// ต้อง Login Google ก่อน
 // ==========================================
 export async function POST(request: Request) {
     try {
+
+        // ตรวจสอบ Login
+        const session = await getServerSession(authOptions);
+
+        if (!session?.user) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "กรุณาเข้าสู่ระบบก่อนลงประกาศขาย"
+                },
+                {
+                    status: 401
+                }
+            );
+        }
+
         const body = await request.json();
 
         const now = new Date();
@@ -131,7 +149,6 @@ export async function POST(request: Request) {
     }
 }
 
-
 // ==========================================
 // แก้ไขสินค้า
 // ==========================================
@@ -162,7 +179,6 @@ export async function PUT(request: Request) {
             );
         }
 
-        // ถ้าไม่มีหลายรูป ให้ใช้รูปหลัก
         if (
             finalImageUrls.length === 0 &&
             imageUrl
@@ -170,7 +186,6 @@ export async function PUT(request: Request) {
             finalImageUrls = [imageUrl];
         }
 
-        // รูปแรกเป็นรูปหลัก
         const mainImage =
             finalImageUrls[0] ||
             imageUrl ||
@@ -230,7 +245,6 @@ export async function PUT(request: Request) {
         );
     }
 }
-
 
 // ==========================================
 // ลบสินค้า
