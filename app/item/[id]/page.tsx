@@ -13,7 +13,7 @@ export default function ItemDetailPage() {
   const [item, setItem] = useState<GameItem | null>(null);
   const [selectedImage, setSelectedImage] = useState('');
   const [loading, setLoading] = useState(true);
-
+  const [isInCart, setIsInCart] = useState(false);
   // โหลดข้อมูลสินค้าจาก MySQL
   useEffect(() => {
     if (!id) return;
@@ -76,26 +76,42 @@ export default function ItemDetailPage() {
   }, [id]);
 
   // เพิ่มสินค้าลงตะกร้า
-  const handleAddToCart = (
-    itemToAdd: GameItem
-  ) => {
-    const cart = JSON.parse(
+  // เพิ่ม / ยกเลิกสินค้าในตะกร้า
+  const handleCartToggle = (itemToToggle: GameItem) => {
+    const cart: GameItem[] = JSON.parse(
       localStorage.getItem('cartItems') || '[]'
     );
 
     const isAlreadyInCart = cart.some(
-      (cartItem: GameItem) =>
-        cartItem.id === itemToAdd.id
+      (cartItem) =>
+        String(cartItem.id) === String(itemToToggle.id)
     );
 
     if (isAlreadyInCart) {
-      alert('⚠️ สินค้านี้อยู่ในตะกร้าแล้ว');
+      // ลบออกจากตะกร้า
+      const updatedCart = cart.filter(
+        (cartItem) =>
+          String(cartItem.id) !== String(itemToToggle.id)
+      );
+
+      localStorage.setItem(
+        'cartItems',
+        JSON.stringify(updatedCart)
+      );
+
+      setIsInCart(false);
+
+      window.dispatchEvent(
+        new Event('storage')
+      );
+
       return;
     }
 
+    // เพิ่มเข้าตะกร้า
     const updatedCart = [
       ...cart,
-      itemToAdd,
+      itemToToggle,
     ];
 
     localStorage.setItem(
@@ -103,11 +119,11 @@ export default function ItemDetailPage() {
       JSON.stringify(updatedCart)
     );
 
+    setIsInCart(true);
+
     window.dispatchEvent(
       new Event('storage')
     );
-
-    alert('🛒 เพิ่มสินค้าลงตะกร้าสำเร็จ!');
   };
 
   // กำลังโหลด
@@ -205,8 +221,8 @@ export default function ItemDetailPage() {
                         setSelectedImage(img)
                       }
                       className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition shrink-0 ${selectedImage === img
-                          ? 'border-blue-600 shadow-md'
-                          : 'border-transparent opacity-70 hover:opacity-100'
+                        ? 'border-blue-600 shadow-md'
+                        : 'border-transparent opacity-70 hover:opacity-100'
                         }`}
                     >
 
@@ -319,12 +335,15 @@ export default function ItemDetailPage() {
               ) : (
 
                 <button
-                  onClick={() =>
-                    handleAddToCart(item)
-                  }
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition shadow"
+                  onClick={() => handleCartToggle(item)}
+                  className={`w-full ${isInCart
+                      ? 'bg-red-500 hover:bg-red-600'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                    } text-white font-semibold py-3 rounded-xl transition shadow`}
                 >
-                  🛒 ใส่ตะกร้าสินค้า
+                  {isInCart
+                    ? '❌ ยกเลิกใส่ตะกร้า'
+                    : '🛒 ใส่ตะกร้าสินค้า'}
                 </button>
 
               )}
