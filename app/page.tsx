@@ -17,7 +17,7 @@ export default function Home() {
   const [cartIds, setCartIds] = useState<string[]>([]);
 
   // ==========================================
-  // ดึงข้อมูลสินค้าจาก MySQL
+  // ดึงข้อมูลสินค้าจาก Database
   // ==========================================
 
   const fetchItems = async () => {
@@ -28,24 +28,44 @@ export default function Home() {
         cache: 'no-store',
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
+        console.error('API error:', data);
+
         throw new Error(
-          'ไม่สามารถดึงข้อมูลสินค้าได้'
+          data?.error || 'ไม่สามารถดึงข้อมูลสินค้าได้'
         );
       }
 
-      const data = await response.json();
+      // ==========================================
+      // แปลงข้อมูลให้ตรงกับ GameItem
+      // ==========================================
 
-      setItems(
-        Array.isArray(data)
-          ? data
-          : []
-      );
+      const normalizedItems: GameItem[] = Array.isArray(data)
+        ? data.map((item) => ({
+          ...item,
+
+          // ราคาใน MySQL/TiDB อาจกลับมาเป็น string
+          price: Number(item.price),
+
+          // รองรับทั้ง string และ array
+          imageUrl: Array.isArray(item.imageUrl)
+            ? item.imageUrl[0] || ''
+            : String(item.imageUrl || ''),
+
+          // imageUrls เผื่อมีหลายรูป
+          imageUrls: Array.isArray(item.imageUrls)
+            ? item.imageUrls
+            : item.imageUrl
+              ? [String(item.imageUrl)]
+              : [],
+        }))
+        : [];
+
+      setItems(normalizedItems);
     } catch (error) {
-      console.error(
-        'Fetch items error:',
-        error
-      );
+      console.error('Fetch items error:', error);
 
       setItems([]);
     } finally {
@@ -66,9 +86,7 @@ export default function Home() {
   useEffect(() => {
     try {
       const savedCart = JSON.parse(
-        localStorage.getItem(
-          'cartItems'
-        ) || '[]'
+        localStorage.getItem('cartItems') || '[]'
       );
 
       if (!Array.isArray(savedCart)) {
@@ -78,30 +96,26 @@ export default function Home() {
 
       // ถ้าเป็นตะกร้าแบบใหม่
       // ["id1", "id2", "id3"]
+
       if (
         savedCart.length === 0 ||
         typeof savedCart[0] === 'string'
       ) {
-        setCartIds(
-          savedCart.filter(
-            (id) =>
-              typeof id === 'string'
-          )
+        const ids = savedCart.filter(
+          (id): id is string => typeof id === 'string'
         );
 
+        setCartIds(ids);
         return;
       }
 
       // ถ้าเป็นข้อมูลเก่า
       // [{ id: "...", ... }]
+
       const oldIds = savedCart
-        .map(
-          (item: GameItem) =>
-            item?.id
-        )
+        .map((item: GameItem) => item?.id)
         .filter(
-          (id): id is string =>
-            typeof id === 'string'
+          (id): id is string => typeof id === 'string'
         );
 
       setCartIds(oldIds);
@@ -112,10 +126,7 @@ export default function Home() {
         JSON.stringify(oldIds)
       );
     } catch (error) {
-      console.error(
-        'Load cart error:',
-        error
-      );
+      console.error('Load cart error:', error);
 
       setCartIds([]);
     }
@@ -125,9 +136,7 @@ export default function Home() {
   // เพิ่ม / เอาออกจากตะกร้า
   // ==========================================
 
-  const handleToggleCart = (
-    item: GameItem
-  ) => {
+  const handleToggleCart = (item: GameItem) => {
     if (!session) {
       alert(
         '⚠️ กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งานตะกร้าสินค้าครับ'
@@ -138,64 +147,41 @@ export default function Home() {
 
     try {
       const savedCart = JSON.parse(
-        localStorage.getItem(
-          'cartItems'
-        ) || '[]'
+        localStorage.getItem('cartItems') || '[]'
       );
 
-      const existingCart: string[] =
-        Array.isArray(savedCart)
-          ? savedCart
-              .map((cartItem: unknown) => {
-                if (
-                  typeof cartItem ===
-                  'string'
-                ) {
-                  return cartItem;
-                }
+      const existingCart: string[] = Array.isArray(savedCart)
+        ? savedCart
+          .map((cartItem: unknown) => {
+            if (typeof cartItem === 'string') {
+              return cartItem;
+            }
 
-                if (
-                  typeof cartItem ===
-                    'object' &&
-                  cartItem !== null &&
-                  'id' in cartItem &&
-                  typeof (
-                    cartItem as {
-                      id?: unknown;
-                    }
-                  ).id === 'string'
-                ) {
-                  return (
-                    cartItem as {
-                      id: string;
-                    }
-                  ).id;
-                }
+            if (
+              typeof cartItem === 'object' &&
+              cartItem !== null &&
+              'id' in cartItem &&
+              typeof (cartItem as { id?: unknown }).id ===
+              'string'
+            ) {
+              return (cartItem as { id: string }).id;
+            }
 
-                return null;
-              })
-              .filter(
-                (
-                  id
-                ): id is string =>
-                  typeof id ===
-                  'string'
-              )
-          : [];
+            return null;
+          })
+          .filter(
+            (id): id is string => typeof id === 'string'
+          )
+        : [];
 
-      const isInCart =
-        existingCart.includes(
-          item.id
-        );
+      const isInCart = existingCart.includes(item.id);
 
       let updatedCart: string[];
 
       if (isInCart) {
-        updatedCart =
-          existingCart.filter(
-            (id) =>
-              id !== item.id
-          );
+        updatedCart = existingCart.filter(
+          (id) => id !== item.id
+        );
 
         alert(
           '❌ เอาสินค้าออกจากตะกร้าแล้วครับ'
@@ -213,9 +199,7 @@ export default function Home() {
 
       localStorage.setItem(
         'cartItems',
-        JSON.stringify(
-          updatedCart
-        )
+        JSON.stringify(updatedCart)
       );
 
       setCartIds(updatedCart);
@@ -225,10 +209,7 @@ export default function Home() {
         new Event('storage')
       );
     } catch (error) {
-      console.error(
-        'Cart error:',
-        error
-      );
+      console.error('Cart error:', error);
 
       alert(
         '❌ ไม่สามารถแก้ไขตะกร้าสินค้าได้'
@@ -240,43 +221,37 @@ export default function Home() {
   // กรองสินค้า
   // ==========================================
 
-  const filteredItems =
-    items.filter((item) => {
-      const search =
-        searchTerm
-          .toLowerCase()
-          .trim();
+  const filteredItems = items.filter((item) => {
+    const search = searchTerm
+      .toLowerCase()
+      .trim();
 
-      const title =
-        String(
-          item.title || ''
-        ).toLowerCase();
+    const title = String(
+      item.title || ''
+    ).toLowerCase();
 
-      const gameName =
-        String(
-          item.gameName || ''
-        ).toLowerCase();
+    const gameName = String(
+      item.gameName || ''
+    ).toLowerCase();
 
-      const sellerName =
-        String(
-          item.sellerName || ''
-        ).toLowerCase();
+    const sellerName = String(
+      item.sellerName || ''
+    ).toLowerCase();
 
-      const matchesSearch =
-        title.includes(search) ||
-        gameName.includes(search) ||
-        sellerName.includes(search);
+    const matchesSearch =
+      title.includes(search) ||
+      gameName.includes(search) ||
+      sellerName.includes(search);
 
-      const matchesGame =
-        selectedGame === 'All' ||
-        item.gameName ===
-          selectedGame;
+    const matchesGame =
+      selectedGame === 'All' ||
+      item.gameName === selectedGame;
 
-      return (
-        matchesSearch &&
-        matchesGame
-      );
-    });
+    return (
+      matchesSearch &&
+      matchesGame
+    );
+  });
 
   // ==========================================
   // ลบสินค้า
@@ -287,8 +262,7 @@ export default function Home() {
     sellerName: string
   ) => {
     const currentName =
-      session?.user?.name?.trim() ||
-      '';
+      session?.user?.name?.trim() || '';
 
     const targetSeller =
       sellerName?.trim() || '';
@@ -301,10 +275,7 @@ export default function Home() {
       return;
     }
 
-    if (
-      currentName !==
-      targetSeller
-    ) {
+    if (currentName !== targetSeller) {
       alert(
         '⚠️ คุณไม่มีสิทธิ์ลบสินค้าของผู้อื่นครับ'
       );
@@ -321,47 +292,37 @@ export default function Home() {
     }
 
     try {
-      const response =
-        await fetch(
-          `/api/items?id=${encodeURIComponent(
-            id
-          )}`,
-          {
-            method: 'DELETE',
-          }
-        );
+      const response = await fetch(
+        `/api/items?id=${encodeURIComponent(id)}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
-      const result =
-        await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
         throw new Error(
           result.error ||
-            'ไม่สามารถลบสินค้าได้'
+          'ไม่สามารถลบสินค้าได้'
         );
       }
 
       // เอาสินค้าออกจากหน้าจอ
-      setItems(
-        (prevItems) =>
-          prevItems.filter(
-            (item) =>
-              item.id !== id
-          )
+      setItems((prevItems) =>
+        prevItems.filter(
+          (item) => item.id !== id
+        )
       );
 
       // เอาสินค้าออกจากตะกร้าด้วย
-      const updatedCart =
-        cartIds.filter(
-          (cartId) =>
-            cartId !== id
-        );
+      const updatedCart = cartIds.filter(
+        (cartId) => cartId !== id
+      );
 
       localStorage.setItem(
         'cartItems',
-        JSON.stringify(
-          updatedCart
-        )
+        JSON.stringify(updatedCart)
       );
 
       setCartIds(updatedCart);
@@ -389,16 +350,12 @@ export default function Home() {
   // แก้ไขสินค้า
   // ==========================================
 
-  const handleEdit = (
-    item: GameItem
-  ) => {
+  const handleEdit = (item: GameItem) => {
     const currentName =
-      session?.user?.name?.trim() ||
-      '';
+      session?.user?.name?.trim() || '';
 
     const targetSeller =
-      item.sellerName?.trim() ||
-      '';
+      item.sellerName?.trim() || '';
 
     if (!currentName) {
       alert(
@@ -408,10 +365,7 @@ export default function Home() {
       return;
     }
 
-    if (
-      currentName !==
-      targetSeller
-    ) {
+    if (currentName !== targetSeller) {
       alert(
         '⚠️ คุณไม่มีสิทธิ์แก้ไขสินค้าของผู้อื่นครับ'
       );
@@ -420,9 +374,7 @@ export default function Home() {
     }
 
     router.push(
-      `/sell?edit=${encodeURIComponent(
-        item.id
-      )}`
+      `/sell?edit=${encodeURIComponent(item.id)}`
     );
   };
 
@@ -479,6 +431,7 @@ export default function Home() {
           mt-8
         "
       >
+
         {/* ======================================
             Banner
         ======================================= */}
@@ -532,9 +485,7 @@ export default function Home() {
               placeholder="ค้นหาชื่อเกม, หัวข้อประกาศ, หรือผู้ขาย..."
               value={searchTerm}
               onChange={(e) =>
-                setSearchTerm(
-                  e.target.value
-                )
+                setSearchTerm(e.target.value)
               }
               className="
                 flex-1
@@ -545,9 +496,7 @@ export default function Home() {
             <select
               value={selectedGame}
               onChange={(e) =>
-                setSelectedGame(
-                  e.target.value
-                )
+                setSelectedGame(e.target.value)
               }
               className="
                 pastel-select
@@ -614,11 +563,7 @@ export default function Home() {
             gap-4
           "
         >
-          <h3
-            className="
-              section-title
-            "
-          >
+          <h3 className="section-title">
             🔥 รหัสเกมมาใหม่พร้อมส่ง
           </h3>
 
@@ -628,9 +573,7 @@ export default function Home() {
               whitespace-nowrap
             "
           >
-            พบทั้งหมด{' '}
-            {filteredItems.length}{' '}
-            รายการ
+            พบทั้งหมด {filteredItems.length} รายการ
           </span>
         </div>
 
@@ -639,11 +582,7 @@ export default function Home() {
         ======================================= */}
 
         {filteredItems.length === 0 ? (
-          <div
-            className="
-              empty-state
-            "
-          >
+          <div className="empty-state">
             <p className="mb-4">
               ยังไม่มีประกาศขายรหัสเกมในระบบ
               หรือไม่พบข้อมูลที่ค้นหา
@@ -673,257 +612,243 @@ export default function Home() {
               gap-6
             "
           >
-            {filteredItems.map(
-              (item) => {
-                const currentName =
-                  session?.user?.name?.trim() ||
-                  '';
+            {filteredItems.map((item) => {
+              const currentName =
+                session?.user?.name?.trim() || '';
 
-                const targetSeller =
-                  item.sellerName?.trim() ||
-                  '';
+              const targetSeller =
+                item.sellerName?.trim() || '';
 
-                const isOwner =
-                  currentName !== '' &&
-                  currentName ===
-                    targetSeller;
+              const isOwner =
+                currentName !== '' &&
+                currentName === targetSeller;
 
-                const isInCart =
-                  cartIds.includes(
-                    item.id
-                  );
+              const isInCart =
+                cartIds.includes(item.id);
 
-                return (
-                  <div
-                    key={item.id}
+              return (
+                <div
+                  key={item.id}
+                  className="
+                    product-card
+                    flex
+                    flex-col
+                  "
+                >
+
+                  {/* =================================
+                      รูปสินค้า
+                  ================================= */}
+
+                  <Link
+                    href={`/item/${item.id}`}
                     className="
-                      product-card
-                      flex
-                      flex-col
+                      product-image
+                      relative
+                      h-48
+                      w-full
+                      block
+                      group
                     "
                   >
-                    {/* =================================
-                        รูปสินค้า
-                    ================================= */}
-
-                    <Link
-                      href={`/item/${item.id}`}
+                    <img
+                      src={
+                        item.imageUrl ||
+                        '/image/bg.png'
+                      }
+                      alt={item.title}
                       className="
-                        product-image
-                        relative
-                        h-48
                         w-full
-                        block
-                        group
+                        h-full
+                        object-cover
+                      "
+                    />
+
+                    <span
+                      className="
+                        game-badge
+                        absolute
+                        top-3
+                        left-3
                       "
                     >
-                      <img
-                        src={
-                          item.imageUrl
-                        }
-                        alt={
-                          item.title
-                        }
-                        className="
-                          w-full
-                          h-full
-                          object-cover
-                        "
-                      />
+                      {item.gameName}
+                    </span>
+                  </Link>
 
-                      <span
+                  {/* =================================
+                      รายละเอียด
+                  ================================= */}
+
+                  <div
+                    className="
+                      p-5
+                      flex-1
+                      flex
+                      flex-col
+                      justify-between
+                    "
+                  >
+                    <div>
+                      <Link
+                        href={`/item/${item.id}`}
+                      >
+                        <h4
+                          className="
+                            product-title
+                            line-clamp-1
+                            mb-1
+                          "
+                        >
+                          {item.title}
+                        </h4>
+                      </Link>
+
+                      <p
                         className="
-                          game-badge
-                          absolute
-                          top-3
-                          left-3
+                          product-description
+                          line-clamp-2
+                          mb-4
                         "
                       >
-                        {
-                          item.gameName
-                        }
-                      </span>
-                    </Link>
+                        {item.description ||
+                          'ไม่มีรายละเอียดสินค้า'}
+                      </p>
+                    </div>
 
-                    {/* =================================
-                        รายละเอียด
-                    ================================= */}
+                    <div>
 
-                    <div
-                      className="
-                        p-5
-                        flex-1
-                        flex
-                        flex-col
-                        justify-between
-                      "
-                    >
-                      <div>
-                        <Link
-                          href={`/item/${item.id}`}
-                        >
-                          <h4
+                      {/* Seller / Date */}
+
+                      <div
+                        className="
+                          flex
+                          justify-between
+                          items-center
+                          gap-3
+                          seller-info
+                          mb-3
+                          border-t
+                          pastel-divider
+                          pt-3
+                        "
+                      >
+                        <span>
+                          ผู้ขาย:{' '}
+
+                          <strong
                             className="
-                              product-title
-                              line-clamp-1
-                              mb-1
+                              seller-name
                             "
                           >
-                            {
-                              item.title
-                            }
-                          </h4>
-                        </Link>
+                            {item.sellerName}
+                          </strong>
+                        </span>
 
-                        <p
-                          className="
-                            product-description
-                            line-clamp-2
-                            mb-4
-                          "
-                        >
-                          {item.description ||
-                            'ไม่มีรายละเอียดสินค้า'}
-                        </p>
+                        <span className="whitespace-nowrap">
+                          {new Date(
+                            item.createdAt
+                          ).toLocaleDateString(
+                            'th-TH'
+                          )}
+                        </span>
                       </div>
 
-                      <div>
-                        {/* Seller / Date */}
+                      {/* Price / Button */}
 
-                        <div
+                      <div
+                        className="
+                          flex
+                          items-center
+                          justify-between
+                          gap-2
+                        "
+                      >
+                        <span
                           className="
-                            flex
-                            justify-between
-                            items-center
-                            gap-3
-                            seller-info
-                            mb-3
-                            border-t
-                            pastel-divider
-                            pt-3
+                            product-price
                           "
                         >
-                          <span>
-                            ผู้ขาย:{' '}
+                          ฿
+                          {Number(
+                            item.price
+                          ).toLocaleString(
+                            'th-TH'
+                          )}
+                        </span>
 
-                            <strong
-                              className="
-                                seller-name
-                              "
-                            >
-                              {
-                                item.sellerName
-                              }
-                            </strong>
-                          </span>
+                        {/* ======================================
+                            ปุ่ม
+                        ======================================= */}
 
-                          <span className="whitespace-nowrap">
-                            {
-                              item.createdAt
+                        {!session ? (
+                          <button
+                            onClick={() =>
+                              alert(
+                                '⚠️ กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งานตะกร้าสินค้าครับ'
+                              )
                             }
-                          </span>
-                        </div>
-
-                        {/* Price / Button */}
-
-                        <div
-                          className="
-                            flex
-                            items-center
-                            justify-between
-                            gap-2
-                          "
-                        >
-                          <span
                             className="
-                              product-price
+                              btn-cart
+                              opacity-70
                             "
                           >
-                            ฿
-                            {Number(
-                              item.price
-                            ).toLocaleString(
-                              'th-TH'
-                            )}
-                          </span>
-
-                          {/* ======================================
-                              ปุ่ม
-                          ======================================= */}
-
-                          {!session ? (
+                            🔒 เข้าสู่ระบบเพื่อซื้อ
+                          </button>
+                        ) : isOwner ? (
+                          <div
+                            className="
+                              flex
+                              gap-2
+                            "
+                          >
                             <button
                               onClick={() =>
-                                alert(
-                                  '⚠️ กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งานตะกร้าสินค้าครับ'
+                                handleEdit(item)
+                              }
+                              className="
+                                btn-edit
+                              "
+                            >
+                              ✏️ แก้ไข
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleDeleteItem(
+                                  item.id,
+                                  item.sellerName
                                 )
                               }
                               className="
-                                btn-cart
-                                opacity-70
+                                btn-delete
                               "
                             >
-                              🔒 เข้าสู่ระบบเพื่อซื้อ
+                              🗑️ ลบ
                             </button>
-                          ) : isOwner ? (
-                            <div
-                              className="
-                                flex
-                                gap-2
-                              "
-                            >
-                              <button
-                                onClick={() =>
-                                  handleEdit(
-                                    item
-                                  )
-                                }
-                                className="
-                                  btn-edit
-                                "
-                              >
-                                ✏️ แก้ไข
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  handleDeleteItem(
-                                    item.id,
-                                    item.sellerName
-                                  )
-                                }
-                                className="
-                                  btn-delete
-                                "
-                              >
-                                🗑️ ลบ
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() =>
-                                handleToggleCart(
-                                  item
-                                )
-                              }
-                              className={
-                                isInCart
-                                  ? 'btn-remove-cart'
-                                  : 'btn-cart'
-                              }
-                            >
-                              {isInCart
-                                ? '❌ ยกเลิกใส่ตะกร้า'
-                                : '🛒 ใส่ตะกร้า'}
-                            </button>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleToggleCart(item)
+                            }
+                            className={
+                              isInCart
+                                ? 'btn-remove-cart'
+                                : 'btn-cart'
+                            }
+                          >
+                            {isInCart
+                              ? '❌ ยกเลิกใส่ตะกร้า'
+                              : '🛒 ใส่ตะกร้า'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-                );
-              }
-            )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
