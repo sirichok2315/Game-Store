@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react';
 import type { GameItem } from '@/types';
 
 interface PurchasedItem extends GameItem {
-  id: string | number;
   itemId: string;
   buyerName: string;
   purchasedAt: string;
@@ -59,7 +58,7 @@ export default function PurchasesPage() {
           );
         }
 
-        setPurchases(data.purchases);
+        setPurchases(data.purchases as PurchasedItem[]);
       } catch (error) {
         if (
           error instanceof Error &&
@@ -83,7 +82,7 @@ export default function PurchasesPage() {
       }
     }
 
-    fetchPurchases();
+    void fetchPurchases();
 
     return () => controller.abort();
   }, [session, status]);
@@ -134,7 +133,7 @@ export default function PurchasesPage() {
           </Link>
         </div>
 
-        {/* กำลังตรวจสอบ Session หรือโหลดข้อมูล */}
+        {/* Loading */}
         {status === 'loading' || loading ? (
           <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
             <p className="text-gray-500">
@@ -142,7 +141,7 @@ export default function PurchasesPage() {
             </p>
           </div>
         ) : !session?.user?.email ? (
-          /* ยังไม่ได้เข้าสู่ระบบ */
+          /* Not logged in */
           <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
             <p className="mb-4 text-gray-500">
               ⚠️ กรุณาเข้าสู่ระบบก่อนดูประวัติการซื้อ
@@ -156,7 +155,7 @@ export default function PurchasesPage() {
             </Link>
           </div>
         ) : errorMessage ? (
-          /* โหลดข้อมูลไม่สำเร็จ */
+          /* API error */
           <div className="rounded-xl border border-red-200 bg-white p-12 text-center shadow-sm">
             <p className="mb-4 text-red-600">
               ⚠️ {errorMessage}
@@ -171,7 +170,7 @@ export default function PurchasesPage() {
             </button>
           </div>
         ) : purchases.length === 0 ? (
-          /* ยังไม่มีประวัติการซื้อ */
+          /* No purchase history */
           <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
             <p className="mb-4 text-gray-500">
               คุณยังไม่มีประวัติการซื้อรหัสเกมในระบบ
@@ -185,7 +184,7 @@ export default function PurchasesPage() {
             </Link>
           </div>
         ) : (
-          /* รายการประวัติการซื้อ */
+          /* Purchase history */
           <div className="space-y-4">
             {purchases.map((item, index) => {
               const itemKey = String(
@@ -197,7 +196,7 @@ export default function PurchasesPage() {
                   key={`${itemKey}-${item.purchasedAt || index}`}
                   className="flex flex-col items-start justify-between gap-6 rounded-xl border border-gray-100 bg-white p-6 shadow-sm md:flex-row md:items-center"
                 >
-                  {/* ข้อมูลสินค้า */}
+                  {/* Product information */}
                   <div className="flex min-w-0 items-center gap-4">
                     {item.imageUrl ? (
                       <img
@@ -228,8 +227,8 @@ export default function PurchasesPage() {
                         ซื้อเมื่อ:{' '}
                         {item.purchasedAt
                           ? new Date(
-                            item.purchasedAt
-                          ).toLocaleString('th-TH')
+                              item.purchasedAt
+                            ).toLocaleString('th-TH')
                           : 'ไม่ระบุวันที่'}
                       </p>
 
@@ -246,7 +245,7 @@ export default function PurchasesPage() {
                     </div>
                   </div>
 
-                  {/* ข้อมูลบัญชีเกม */}
+                  {/* Game account credentials */}
                   <div className="flex w-full min-w-0 flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 md:w-auto md:min-w-70">
                     <span className="text-xs font-bold text-amber-800">
                       🔐 ข้อมูลเข้าสู่ระบบเกมของคุณ
@@ -323,3 +322,4 @@ export default function PurchasesPage() {
     </main>
   );
 }
+
