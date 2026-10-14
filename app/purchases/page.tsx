@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { GameItem } from '@/types';
 import { useSession } from 'next-auth/react';
+import type { GameItem } from '@/types';
 
 interface PurchasedItem extends GameItem {
+  id: string | number;
   itemId: string;
   buyerName: string;
   purchasedAt: string;
@@ -13,66 +14,80 @@ interface PurchasedItem extends GameItem {
 
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<PurchasedItem[]>([]);
-  const [showPassword, setShowPassword] = useState<{
-    [key: string]: boolean;
-  }>({});
-
+  const [showPassword, setShowPassword] = useState<
+    Record<string, boolean>
+  >({});
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const { data: session, status } = useSession();
 
-  // โหลดประวัติการซื้อจาก MySQL
   useEffect(() => {
-    if (status === 'loading') {
-      return;
-    }
+    if (status === 'loading') return;
 
-    // ตรวจสอบว่ามี Login และมี email
-    const userEmail = session?.user?.email?.trim();
-
-    if (!userEmail) {
+    if (!session?.user?.email?.trim()) {
       setPurchases([]);
+      setErrorMessage('');
       setLoading(false);
       return;
     }
 
-    const fetchPurchases = async () => {
+    const controller = new AbortController();
+
+    async function fetchPurchases() {
       try {
         setLoading(true);
+        setErrorMessage('');
 
-        const response = await fetch(
-          `/api/purchases?buyerName=${encodeURIComponent(userEmail)}`
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            'ไม่สามารถดึงประวัติการซื้อได้'
-          );
-        }
+        const response = await fetch('/api/purchases', {
+          method: 'GET',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
 
         const data = await response.json();
 
-        setPurchases(data);
-      } catch (error) {
-        console.error(
-          'Fetch purchases error:',
-          error
-        );
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.error || 'ไม่สามารถโหลดประวัติการซื้อได้'
+          );
+        }
 
-        alert(
-          '❌ ไม่สามารถโหลดประวัติการซื้อได้'
-        );
+        if (!Array.isArray(data.purchases)) {
+          throw new Error(
+            'รูปแบบข้อมูลประวัติการซื้อไม่ถูกต้อง'
+          );
+        }
+
+        setPurchases(data.purchases);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name === 'AbortError'
+        ) {
+          return;
+        }
+
+        console.error('Fetch purchases error:', error);
 
         setPurchases([]);
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'เกิดข้อผิดพลาดในการโหลดประวัติการซื้อ'
+        );
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
-    };
+    }
 
     fetchPurchases();
+
+    return () => controller.abort();
   }, [session, status]);
 
-  // แสดง / ซ่อน Password
   const togglePassword = (id: string) => {
     setShowPassword((prev) => ({
       ...prev,
@@ -80,23 +95,33 @@ export default function PurchasesPage() {
     }));
   };
 
-  // คัดลอกข้อมูล
-  const copyToClipboard = (
+  const copyToClipboard = async (
     text: string,
     label: string
   ) => {
-    navigator.clipboard.writeText(text);
+    if (!text) {
+      alert(`ไม่มีข้อมูล ${label} ให้คัดลอก`);
+      return;
+    }
 
-    alert(`📋 คัดลอก ${label} แล้ว!`);
+    try {
+      await navigator.clipboard.writeText(text);
+      alert(`คัดลอก ${label} แล้ว`);
+    } catch (error) {
+      console.error('Clipboard error:', error);
+      alert('คัดลอกไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ Clipboard');
+    }
+  };
+
+  const handleRetry = () => {
+    window.location.reload();
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-4xl mx-auto">
-
+    <main className="min-h-screen bg-gray-50 px-4 py-10">
+      <div className="mx-auto max-w-4xl">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-gray-800">
             📦 ประวัติการซื้อและข้อมูลไอดีเกมของคุณ
           </h1>
@@ -107,192 +132,193 @@ export default function PurchasesPage() {
           >
             ← กลับหน้าแรก
           </Link>
-
         </div>
 
-        {/* กำลังโหลด */}
-        {loading ? (
-
-          <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-100">
-
+        {/* กำลังตรวจสอบ Session หรือโหลดข้อมูล */}
+        {status === 'loading' || loading ? (
+          <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
             <p className="text-gray-500">
               ⏳ กำลังโหลดประวัติการซื้อ...
             </p>
-
           </div>
-
         ) : !session?.user?.email ? (
-
-          /* ยังไม่ได้ Login */
-          <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-100">
-
-            <p className="text-gray-500 mb-4">
+          /* ยังไม่ได้เข้าสู่ระบบ */
+          <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
+            <p className="mb-4 text-gray-500">
               ⚠️ กรุณาเข้าสู่ระบบก่อนดูประวัติการซื้อ
             </p>
 
             <Link
               href="/"
-              className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition"
+              className="inline-block rounded-lg bg-blue-600 px-6 py-2.5 font-semibold text-white transition hover:bg-blue-700"
             >
               กลับหน้าแรก
             </Link>
-
           </div>
+        ) : errorMessage ? (
+          /* โหลดข้อมูลไม่สำเร็จ */
+          <div className="rounded-xl border border-red-200 bg-white p-12 text-center shadow-sm">
+            <p className="mb-4 text-red-600">
+              ⚠️ {errorMessage}
+            </p>
 
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="rounded-lg bg-blue-600 px-6 py-2.5 font-semibold text-white transition hover:bg-blue-700"
+            >
+              ลองใหม่อีกครั้ง
+            </button>
+          </div>
         ) : purchases.length === 0 ? (
-
-          /* ไม่มีประวัติ */
-          <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-100">
-
-            <p className="text-gray-500 mb-4">
+          /* ยังไม่มีประวัติการซื้อ */
+          <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
+            <p className="mb-4 text-gray-500">
               คุณยังไม่มีประวัติการซื้อรหัสเกมในระบบ
             </p>
 
             <Link
               href="/"
-              className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition"
+              className="inline-block rounded-lg bg-blue-600 px-6 py-2.5 font-semibold text-white transition hover:bg-blue-700"
             >
               เลือกซื้อรหัสเกมเลย
             </Link>
-
           </div>
-
         ) : (
-
           /* รายการประวัติการซื้อ */
           <div className="space-y-4">
+            {purchases.map((item, index) => {
+              const itemKey = String(
+                item.itemId || item.id || index
+              );
 
-            {purchases.map((item) => (
+              return (
+                <div
+                  key={`${itemKey}-${item.purchasedAt || index}`}
+                  className="flex flex-col items-start justify-between gap-6 rounded-xl border border-gray-100 bg-white p-6 shadow-sm md:flex-row md:items-center"
+                >
+                  {/* ข้อมูลสินค้า */}
+                  <div className="flex min-w-0 items-center gap-4">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title || 'รูปสินค้า'}
+                        className="h-20 w-20 shrink-0 rounded-lg border object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border bg-gray-100 text-2xl">
+                        🎮
+                      </div>
+                    )}
 
-              <div
-                key={item.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between"
-              >
+                    <div className="min-w-0">
+                      <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                        {item.gameName || 'ไม่ระบุเกม'}
+                      </span>
 
-                {/* ข้อมูลสินค้าฝั่งซ้าย */}
-                <div className="flex gap-4 items-center">
+                      <h3 className="mt-1 wrap-break-words text-lg font-bold text-gray-800">
+                        {item.title || 'ไม่มีชื่อสินค้า'}
+                      </h3>
 
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="w-20 h-20 object-cover rounded-lg border shrink-0"
-                  />
+                      <p className="mt-1 text-xs text-gray-400">
+                        ผู้ขาย: {item.sellerName || 'ไม่ระบุ'}
+                      </p>
 
-                  <div>
+                      <p className="mt-1 text-xs text-gray-400">
+                        ซื้อเมื่อ:{' '}
+                        {item.purchasedAt
+                          ? new Date(
+                            item.purchasedAt
+                          ).toLocaleString('th-TH')
+                          : 'ไม่ระบุวันที่'}
+                      </p>
 
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full font-medium">
-                      {item.gameName}
-                    </span>
-
-                    <h3 className="font-bold text-gray-800 text-lg mt-1">
-                      {item.title}
-                    </h3>
-
-                    <p className="text-xs text-gray-400 mt-1">
-                      ผู้ขาย: {item.sellerName}
-                    </p>
-
-                    <p className="text-xs text-gray-400 mt-1">
-                      ซื้อเมื่อ:{' '}
-                      {new Date(
-                        item.purchasedAt
-                      ).toLocaleString('th-TH')}
-                    </p>
-
-                    <span className="text-green-600 font-bold text-sm">
-                      ฿{Number(item.price).toLocaleString()}
-                    </span>
-
+                      <span className="text-sm font-bold text-green-600">
+                        ฿
+                        {Number(item.price || 0).toLocaleString(
+                          'th-TH',
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }
+                        )}
+                      </span>
+                    </div>
                   </div>
 
-                </div>
-
-                {/* กล่องข้อมูล Username / Password */}
-                <div className="w-full md:w-auto bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col gap-2 min-w-70">
-
-                  <span className="text-xs font-bold text-amber-800">
-                    🔐 ข้อมูลเข้าสู่ระบบ (รหัสของคุณ)
-                  </span>
-
-                  {/* Username */}
-                  <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded border text-xs">
-
-                    <span className="text-gray-600">
-                      User:{' '}
-
-                      <strong className="text-gray-800">
-                        {item.gameUsername ||
-                          'ไม่ได้ระบุ'}
-                      </strong>
+                  {/* ข้อมูลบัญชีเกม */}
+                  <div className="flex w-full min-w-0 flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 md:w-auto md:min-w-70">
+                    <span className="text-xs font-bold text-amber-800">
+                      🔐 ข้อมูลเข้าสู่ระบบเกมของคุณ
                     </span>
 
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          item.gameUsername || '',
-                          'Username'
-                        )
-                      }
-                      className="text-blue-600 hover:underline font-semibold ml-2"
-                    >
-                      คัดลอก
-                    </button>
-
-                  </div>
-
-                  {/* Password */}
-                  <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded border text-xs">
-
-                    <span className="text-gray-600">
-                      Pass:{' '}
-
-                      <strong className="text-gray-800 ml-1">
-                        {showPassword[item.id]
-                          ? item.gamePassword ||
-                          'ไม่ได้ระบุ'
-                          : '••••••••'}
-                      </strong>
-                    </span>
-
-                    <div className="flex gap-2">
+                    {/* Username */}
+                    <div className="flex items-center justify-between gap-3 rounded border bg-white px-3 py-2 text-xs">
+                      <span className="min-w-0 break-all text-gray-600">
+                        User:{' '}
+                        <strong className="text-gray-800">
+                          {item.gameUsername || 'ไม่ได้ระบุ'}
+                        </strong>
+                      </span>
 
                       <button
-                        onClick={() =>
-                          togglePassword(item.id)
-                        }
-                        className="text-gray-500 hover:text-gray-700 underline"
-                      >
-                        {showPassword[item.id]
-                          ? 'ซ่อน'
-                          : 'แสดง'}
-                      </button>
-
-                      <button
+                        type="button"
                         onClick={() =>
                           copyToClipboard(
-                            item.gamePassword || '',
-                            'Password'
+                            item.gameUsername || '',
+                            'Username'
                           )
                         }
-                        className="text-blue-600 hover:underline font-semibold"
+                        className="shrink-0 font-semibold text-blue-600 hover:underline"
                       >
                         คัดลอก
                       </button>
-
                     </div>
 
+                    {/* Password */}
+                    <div className="flex items-center justify-between gap-3 rounded border bg-white px-3 py-2 text-xs">
+                      <span className="min-w-0 break-all text-gray-600">
+                        Pass:{' '}
+                        <strong className="text-gray-800">
+                          {showPassword[itemKey]
+                            ? item.gamePassword || 'ไม่ได้ระบุ'
+                            : '••••••••'}
+                        </strong>
+                      </span>
+
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            togglePassword(itemKey)
+                          }
+                          className="text-gray-500 underline hover:text-gray-700"
+                        >
+                          {showPassword[itemKey]
+                            ? 'ซ่อน'
+                            : 'แสดง'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyToClipboard(
+                              item.gamePassword || '',
+                              'Password'
+                            )
+                          }
+                          className="font-semibold text-blue-600 hover:underline"
+                        >
+                          คัดลอก
+                        </button>
+                      </div>
+                    </div>
                   </div>
-
                 </div>
-
-              </div>
-
-            ))}
-
+              );
+            })}
           </div>
-
         )}
-
       </div>
     </main>
   );
